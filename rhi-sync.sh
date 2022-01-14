@@ -48,7 +48,7 @@ main() {
 
   clone $UPSTREAM_ORG $UPSTREAM_REPO
   cd $UPSTREAM_REPO
-  echo "INFO: adding $DOWNSTREAM_ORG/$DOWNSTREAM_REPO remote as $DOWNSTREAM_REMOTE"
+  echo "🚜 adding $DOWNSTREAM_ORG/$DOWNSTREAM_REPO remote as $DOWNSTREAM_REMOTE"
   git remote add -f $DOWNSTREAM_REMOTE https://github.com/$DOWNSTREAM_ORG/$DOWNSTREAM_REPO.git
 
   calculate_commits_upstream $UPSTREAM_REPO $UPSTREAM_BRANCH
@@ -66,7 +66,7 @@ main() {
 
   if [[ $miss_downstream == 0 ]]
   then
-    echo "INFO: no missing commits have been found"
+    echo "🍒  no upstream commits mising from downstream repo."
   else
     echo "INFO: there are $miss_downstream commits missing downstream."
     if [ "$CHERRY_PICK" == "true" ]
@@ -75,7 +75,7 @@ main() {
       # if this one fail, we must have someone to manually merge
       for i in `tac /tmp/missing-downstream`
         do
-          echo "cherry-picking $i"
+          echo "🍒 cherry-picking $i"
           git cherry-pick $i
           if [[ $? != 0 ]]; then
             show_how_to_fix  $UPSTREAM_ORG $UPSTREAM_REPO $DOWNSTREAM_ORG $DOWNSTREAM_REPO $DOWNSTREAM_REMOTE $DOWNSTREAM_BRANCH
@@ -83,21 +83,21 @@ main() {
           git commit --amend -m "$(git log --format=%B -n1)" -m "(cherry picked from commit $UPSTREAM_ORG/$UPSTREAM_REPO@$i)"
         done
       # refresh vendor directory
-      echo "INFO: refreshing vendor directory"
+      echo "🔄  refreshing vendor directory"
       go mod vendor
       git add vendor
       git commit -m "Vendor directory refresh"
       if [ "$DRY_RUN" == "false" ]
       then
         # push the changes
-        echo "INFO: pushing to $DOWNSTREAM_REMOTE repo"
+        echo "📌 pushing to $DOWNSTREAM_REMOTE repo"
         git push $DOWNSTREAM_REMOTE HEAD:$DOWNSTREAM_BRANCH
       else
-        echo "WARN: dry-run mode on, won't push any change!"
+        echo "❗ dry-run mode on, won't push any change!"
       fi
     else
       # Show the list only
-      echo "INFO: list of commits not yet ported to downstream repo (sorted by time)"
+      echo "🍒 list of commits not yet ported to downstream repo (sorted by time)"
       echo ""
       tac /tmp/missing-downstream
     fi
@@ -106,7 +106,7 @@ main() {
   if [ "$UPDATE_METADATA" == "true" ]
   then
     # refresh CRDs and copy to metadata repository
-    echo "INFO: refreshing CRDs"
+    echo "🔄  refreshing manifest CRDs"
     make generate-crd
     # we’ll need the metadata repository in order to automatically sync the CRDs
     cd ..
@@ -118,10 +118,10 @@ main() {
     git commit -m "Manifests directory refresh"
     if [ "$DRY_RUN" == "false" ]
     then
-      echo "INFO: pushing to metadata repo"
+      echo "📌 pushing to metadata repo"
       git push origin HEAD:$METADATA_BRANCH
     else
-      echo "WARN: dry-run mode on, won't push any change!"
+      echo "❗ dry-run mode on, won't push any change!"
     fi
   fi
 }
@@ -139,7 +139,7 @@ parse_args(){
   UPSTREAM_BRANCH=${BASH_REMATCH[3]}
   if [ "$UPSTREAM_ORG" == "" ] || [ "$UPSTREAM_REPO" == "" ] || [ "$UPSTREAM_BRANCH" == "" ]
   then
-    echo "ERROR: you must provide an upstream configuration as <org/repo/branch>"
+    echo "❗ you must provide an upstream configuration as <org/repo/branch>"
     exit 1
   fi
   shift
@@ -149,7 +149,7 @@ parse_args(){
   DOWNSTREAM_BRANCH=${BASH_REMATCH[3]}
   if [ "$DOWNSTREAM_ORG" == "" ] || [ "$DOWNSTREAM_REPO" == "" ] || [ "$DOWNSTREAM_BRANCH" == "" ]
   then
-    echo "ERROR: you must provide a downstream configuration as <org/repo/branch>"
+    echo "❗ you must provide a downstream configuration as <org/repo/branch>"
     exit 1
   fi
   shift
@@ -184,12 +184,12 @@ parse_args(){
 
           if [ "$UPDATE_METADATA" == "true" ] && ( [ "$METADATA_ORG" == "" ] || [ "$METADATA_REPO" == "" ] || [ "$METADATA_BRANCH" == "" ] )
           then
-            echo "ERROR: you must provide a metadata configuration as <org/repo/branch>"
+            echo "❗ you must provide a metadata configuration as <org/repo/branch>"
             exit 1
           fi
         ;;
         *)
-          echo "Unknown argument: $1"
+          echo "❗ unknown argument: $1"
           display_usage
           exit 1
           ;;
@@ -201,7 +201,7 @@ parse_args(){
 clone(){
   org=$1
   repo=$2
-  echo "INFO: cloning $org/$repo repo"
+  echo "🚜 cloning $org/$repo repo"
   git clone https://github.com/$org/$repo.git
 }
 
@@ -209,7 +209,7 @@ calculate_commits_upstream(){
   repo=$1
   branch=$2
   # For upstream, we can get a plain list of commit IDs
-  echo "INFO: calculating list of upstream commits ($repo origin/$branch)"
+  echo "🔎 calculating list of upstream commits ($repo origin/$branch)"
   git fetch origin
   git checkout origin/$branch
   git log --pretty=format:"%h" > /tmp/$repo.log
@@ -223,7 +223,7 @@ calculate_commits_downstream(){
   upstream_org=$4
   upstream_repo=$5
   # For downstream, we need to extract the original commit id, if it was a cherry pick
-  echo "INFO: calculating list of downstream commits ($remote/$branch)"
+  echo "🔎 calculating list of downstream commits ($remote/$branch)"
   git fetch $remote
   git checkout $remote/$branch
   for i in `git log --pretty=format:"%h"`
@@ -271,7 +271,7 @@ show_how_to_fix(){
   DOWNSTREAM_REMOTE=$5
   DOWNSTREAM_BRANCH=$6
 
-  echo "Some conflict detected on commit $i. Sorry, I cannot do much more, please fix it manually."
+  echo "❗ Some conflict detected on commit $i. Sorry, I cannot do much more, please fix it manually."
   echo "Here a suggestion to help you fix the problem:"
   echo ""
   echo "  git clone https://github.com/$UPSTREAM_ORG/$UPSTREAM_REPO.git"
