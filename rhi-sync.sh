@@ -11,7 +11,7 @@ Usage: rhi-sync.sh <upstream_org/repo/branch> <downstream_org/repo/branch> [opti
     --no-metadata             Won't refresh CRDs and update metadata repository
 -m, --metadata                Pull the metadata from a <metadata_org/repo/branch>
 -d, --dry-run                 Don't push any change.
--f, --force                   Clean any local git repository already cloned and suppor files
+-f, --force                   Clean any local git repository already cloned and support files
     --help                    This help message
 
 EOT
@@ -51,6 +51,23 @@ main() {
   echo "🚜 adding $DOWNSTREAM_ORG/$DOWNSTREAM_REPO remote as $DOWNSTREAM_REMOTE"
   git remote add -f $DOWNSTREAM_REMOTE https://github.com/$DOWNSTREAM_ORG/$DOWNSTREAM_REPO.git
 
+  # Check if the branches exist
+  upstream_branch_exists=$(git branch -a | grep remotes/origin/$UPSTREAM_BRANCH)
+  if [ "$upstream_branch_exists" == "" ]
+  then
+    echo "❗ the $UPSTREAM_BRANCH branch does not exist on $UPSTREAM_ORG/$UPSTREAM_REPO repository."
+    echo "Make sure the upstream branch exists before retrying the synchronization process."
+    exit -1
+  fi
+
+  downstream_branch_exists=$(git branch -a | grep remotes/$DOWNSTREAM_REMOTE/$DOWNSTREAM_BRANCH)
+  if [ "$downstream_branch_exists" == "" ]
+  then
+    echo "❗ the $DOWNSTREAM_BRANCH branch does not exist on $DOWNSTREAM_ORG/$DOWNSTREAM_REPO repository."
+    echo "Make sure the downstream branch exists before retrying the synchronization process."
+    exit -1
+  fi
+
   calculate_commits_upstream $UPSTREAM_REPO $UPSTREAM_BRANCH
   calculate_commits_downstream $DOWNSTREAM_REPO $DOWNSTREAM_REMOTE $DOWNSTREAM_BRANCH $UPSTREAM_ORG $UPSTREAM_REPO
   calculate_diff /tmp/$UPSTREAM_REPO.log /tmp/$DOWNSTREAM_REPO.log /tmp/missing-downstream
@@ -66,7 +83,7 @@ main() {
 
   if [[ $miss_downstream == 0 ]]
   then
-    echo "🍒  no upstream commits mising from downstream repo."
+    echo "🍒  no upstream commits missing from downstream repo."
   else
     echo "INFO: there are $miss_downstream commits missing downstream."
     if [ "$CHERRY_PICK" == "true" ]
@@ -82,19 +99,6 @@ main() {
           fi
           git commit --amend -m "$(git log --format=%B -n1)" -m "(cherry picked from commit $UPSTREAM_ORG/$UPSTREAM_REPO@$i)"
         done
-      # refresh vendor directory
-      echo "🔄  refreshing vendor directory"
-      go mod vendor
-      git add vendor
-      git commit -m "Vendor directory refresh"
-      if [ "$DRY_RUN" == "false" ]
-      then
-        # push the changes
-        echo "📌 pushing to $DOWNSTREAM_REMOTE repo"
-        git push $DOWNSTREAM_REMOTE HEAD:$DOWNSTREAM_BRANCH
-      else
-        echo "❗ dry-run mode on, won't push any change!"
-      fi
     else
       # Show the list only
       echo "🍒 list of commits not yet ported to downstream repo (sorted by time)"
@@ -103,10 +107,24 @@ main() {
     fi
   fi
 
+  # refresh vendor directory
+  echo "🔄  refreshing vendor directory"
+  go mod vendor
+  git add vendor
+  git commit -m "Vendor directory refresh"
+  if [ "$DRY_RUN" == "false" ]
+  then
+    # push the changes
+    echo "📌 pushing to $DOWNSTREAM_REMOTE repo"
+    git push $DOWNSTREAM_REMOTE HEAD:$DOWNSTREAM_BRANCH
+  else
+    echo "❗ dry-run mode on, won't push any change!"
+  fi
+
   if [ "$UPDATE_METADATA" == "true" ]
   then
     # refresh CRDs and copy to metadata repository
-    echo "🔄  refreshing manifest CRDs"
+    echo "🔄 refreshing manifest CRDs"
     make generate-crd
     # we’ll need the metadata repository in order to automatically sync the CRDs
     cd ..
