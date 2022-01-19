@@ -9,6 +9,7 @@ Usage: rhi-sync.sh <upstream_org/repo/branch> <downstream_org/repo/branch> [opti
 
     --no-cherry-pick          Don't cherry pick the commits (will list them only)
     --no-metadata             Won't refresh CRDs and update metadata repository
+    --no-vendor               Won't refresh vendor directory
 -m, --metadata                Pull the metadata from a <metadata_org/repo/branch>
 -d, --dry-run                 Don't push any change.
 -f, --force                   Clean any local git repository already cloned and support files
@@ -33,6 +34,7 @@ DOWNSTREAM_BRANCH=""
 DRY_RUN="false"
 CHERRY_PICK="true"
 UPDATE_METADATA="true"
+UPDATE_VENDOR="true"
 FORCE="false"
 
 main() {
@@ -107,11 +109,15 @@ main() {
     fi
   fi
 
-  # refresh vendor directory
-  echo "🔄  refreshing vendor directory"
-  go mod vendor
-  git add vendor
-  git commit -m "Vendor directory refresh"
+  if [ "$UPDATE_VENDOR" == "true" ]
+  then
+    # refresh vendor directory
+    echo "🔄  refreshing vendor directory"
+    go mod vendor
+    git add vendor
+    git commit -m "Vendor directory refresh"
+  fi
+
   if [ "$DRY_RUN" == "false" ]
   then
     # push the changes
@@ -192,6 +198,9 @@ parse_args(){
           ;;
         --no-metadata)
           UPDATE_METADATA="false"
+          ;;
+        --no-vendor)
+          UPDATE_VENDOR="false"
           ;;
         -m|--metadata)
           shift
