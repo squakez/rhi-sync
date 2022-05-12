@@ -85,7 +85,7 @@ main() {
 
   if [[ $miss_downstream == 0 ]]
   then
-    echo "🍒  no upstream commits missing from downstream repo."
+    echo "🍒 no upstream commits missing from downstream repo."
   else
     echo "INFO: there are $miss_downstream commits missing downstream."
     if [ "$CHERRY_PICK" == "true" ]
@@ -112,7 +112,7 @@ main() {
   if [ "$UPDATE_VENDOR" == "true" ]
   then
     # refresh vendor directory
-    echo "🔄  refreshing vendor directory"
+    echo "🔄 refreshing vendor directory"
     go mod vendor
     git add vendor
     git commit -m "Vendor directory refresh"
