@@ -53,15 +53,6 @@ main() {
     exit -1
   fi
 
-  downstream_branch_exists=$(git branch -a | grep remotes/$DOWNSTREAM_REMOTE/$DOWNSTREAM_BRANCH)
-  if [ "$downstream_branch_exists" != "" ]
-  then
-    echo "❗ the $DOWNSTREAM_BRANCH branch already exists on $DOWNSTREAM_ORG/$DOWNSTREAM_REPO repository. Bump process aborted."
-    echo ""
-    echo "You may delete the downstream branch and retry the initialization process."
-    exit -1
-  fi
-
   git fetch origin
   git checkout origin/$UPSTREAM_BRANCH
   # Initialize process may vary depending the project
@@ -70,29 +61,37 @@ main() {
 
   if [ "$DRY_RUN" == "false" ]
   then
+    downstream_branch_exists=$(git branch -a | grep remotes/$DOWNSTREAM_REMOTE/$DOWNSTREAM_BRANCH)
+    if [ "$downstream_branch_exists" != "" ]
+    then
+      echo "❗ the $DOWNSTREAM_BRANCH branch already exists on $DOWNSTREAM_ORG/$DOWNSTREAM_REPO repository. Bump process aborted."
+      echo ""
+      echo "You may delete the downstream branch and retry the initialization process."
+      exit -1
+    fi
     # push the new branch
     echo ""
     echo "📌 pushing to $DOWNSTREAM_REPO/$DOWNSTREAM_BRANCH branch"
     git push $DOWNSTREAM_REMOTE HEAD:refs/heads/$DOWNSTREAM_BRANCH
     echo "🎉 branch published! Now, please remind to set $DOWNSTREAM_BRANCH as default branch manually in $DOWNSTREAM_ORG/$DOWNSTREAM_REPO"
+
+    if [ "$DOWNSTREAM_PREV_BRANCH" != "" ]
+    then
+      downstream_prev_branch_exists=$(git branch -a | grep remotes/$DOWNSTREAM_REMOTE/$DOWNSTREAM_PREV_BRANCH)
+      if [ "$downstream_prev_branch_exists" == "" ]
+      then
+        echo ""
+        echo "❗ the $DOWNSTREAM_PREV_BRANCH branch does not exists on $DOWNSTREAM_ORG/$DOWNSTREAM_REPO repository. Cannot provide a comparison."
+        echo "Please, make sure to manually check that no important development downstream is missing."
+      else
+        # Diff process may vary depending the project
+        chmod +x /tmp/diff.sh
+        source /tmp/diff.sh
+      fi
+    fi
   else
     echo ""
-    echo "❗ dry-run mode on, won't push any change!"
-  fi
-
-  if [ "$DOWNSTREAM_PREV_BRANCH" != "" ]
-  then
-    downstream_prev_branch_exists=$(git branch -a | grep remotes/$DOWNSTREAM_REMOTE/$DOWNSTREAM_PREV_BRANCH)
-    if [ "$downstream_prev_branch_exists" == "" ]
-    then
-      echo ""
-      echo "❗ the $DOWNSTREAM_PREV_BRANCH branch does not exists on $DOWNSTREAM_ORG/$DOWNSTREAM_REPO repository. Cannot provide a comparison."
-      echo "Please, make sure to manually check that no important development downstream is missing."
-    else
-      # Diff process may vary depending the project
-      chmod +x /tmp/diff.sh
-      source /tmp/diff.sh
-    fi
+    echo "❗ dry-run mode on, won't push any change, neither cannot make a diff against previous branch."
   fi
 }
 
